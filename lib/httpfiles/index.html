@@ -1,0 +1,76 @@
+<html>
+    <head>
+        <style>
+            body {
+                font-family: "Verdana", Arial, sans-serif;    
+            }
+            h1 {
+                margin-top: 30px;
+                margin-left: 20px;
+            }
+            p {
+                margin-left: 20px;                
+            }
+            .button {
+                background-color: #989898; 
+                border: none;
+                color: white;
+                padding: 4px 15px;
+                text-align: center;
+                text-decoration: none;
+                display: inline-block;
+                font-size: 16px;
+                margin-left: 20px;
+            }
+        </style>        
+        <script>
+            var xmlhttp = new XMLHttpRequest();
+            var url = '/api/outletlist';
+
+            xmlhttp.onreadystatechange = function() {
+                if (this.readyState == 4 && this.status == 200) {
+                    var myArr = JSON.parse(this.responseText);
+                    updateOutletList(myArr);
+                }
+            };
+            xmlhttp.open("GET", url, true);
+            xmlhttp.send();
+
+            /* dirty work around: calls are async, 
+               therefore the outlet list is requested a 
+               second time to reflect any changes on the
+               status of the GHomaPlatform object */
+            setTimeout(function(){ 
+                xmlhttp.open("GET", url, true);
+                xmlhttp.send();
+            }, 500);  
+            
+            function updateOutletList(arr) {
+                var out = "";
+                
+                arr.forEach(function(item){
+                    out +=  '<li id="' + item.id + '">' + item.name +
+                            '<button class="button" onClick="javascript:callAPI(\'toggle\',\'' + item.id + '\')">' + item.state + '</button>' +
+                            '<button class="button" onClick="javascript:callAPI(\'ignore\',\'' + item.id + '\')">ignore</button>' +
+                            '</li>';
+                });
+
+                document.getElementById("outletlist").innerHTML = out;
+            }
+            
+            function callAPI(action, id) {
+                console.log("sending ", action, " for id ", id);
+                window.location.replace("/api/" + action + "?" + id);
+            }
+            
+        </script>
+    </head>
+    
+    <body>
+        <h1>homebridge-ghoma </h1>
+        <p>Here you see all G-Homa Outlets connected to homebridge. You can toggle their status from the browser. Also if you have outlets that you do not want to be controlled by homebridge you can remove those here. By clicking the ignore button the respective outlet will be removed from hombridge and ignored by any subsequent start of it in the future. If you want to make outlets available again remove the ghoma_config.json from your hombridge configuration directory (~/.homebridge is the default). </p>
+        <ul id="outletlist">
+            
+        </ul>
+    </body>
+</html>

@@ -1,0 +1,26 @@
+{
+  "name": "homebridge-ghoma",
+  "version": "0.0.1",
+  "description": "homebridge plugin to enable g-homa smart plugs in HomeKit",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "engines": {
+    "node": ">=0.12.0",
+    "homebridge": ">=0.3.1"
+  },
+  "keywords": [
+    "homebridge-plugin",
+    "g-homa",
+    "goa"
+  ],
+  "author": "Manuel Wille",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^4.16.2",
+    "ghoma": "^1.0.6",
+    "http": "0.0.0",
+    "path": "^0.12.7"
+  }
+}
