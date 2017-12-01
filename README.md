@@ -1,9 +1,9 @@
-# homberidge-ghoma
+# homebridge-ghoma
 
 Introduction
 ------------
 
-Homebridge-ghoma is a plugin to [Homebridge][], enables the usage of G-Homa outlets. G-Homa outlets are affordable outlets that connect to your Wireless-Lan. This project does not allow for usage of all features offfered by the outlet, but for simple switching by HomeKit through Homebridge. Most features of the manufacturer's app however you can achieve with HomeKit's features. Presumably that's why you are looking at this project here anyway.
+Homebridge-ghoma is a plugin to [Homebridge][], enables the usage of G-Homa outlets. G-Homa outlets are affordable outlets that connect to your Wireless-Lan. This project does not allow for usage of all features offered by the outlet, but for simple switching by HomeKit through Homebridge. Most features of the manufacturer's app however you can achieve with HomeKit's features. Presumably that's why you are looking at this project here anyway.
 
   [homebridge]: https://github.com/nfarina/homebridge
   
