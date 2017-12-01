@@ -1,4 +1,4 @@
-# hombridge-ghoma
+# homberidge-ghoma
 
 Introduction
 ------------
