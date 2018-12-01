@@ -185,8 +185,7 @@ GHomaPlatform.prototype.registerCallbacks = function(accessory) {
 
         srvc.getCharacteristic(this.Characteristic.OutletInUse).on('get', function (callback, context) {
             this.log.info(accessory.displayName, "OutletInUse - get");
-            accessory.getService(this.Service.Outlet).getCharacteristic(this.Characteristic.OutletInUse).updateValue(true);
-            callback();
+            callback(null, true);
         }.bind(this));
 
     }
