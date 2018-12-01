@@ -175,23 +175,20 @@ GHomaPlatform.prototype.registerCallbacks = function(accessory) {
             callback();
         }.bind(this));
 
-        srvc.getCharacteristic(this.Characteristic.On).on('get', function(callback, context) {
-            this.log.info(accessory.displayName, " On - get");
-            var characteristic = accessory.getService(this.Service.Outlet).getCharacteristic(this.Characteristic.On);
+        srvc.getCharacteristic(this.Characteristic.On).on('get', function (callback, context) {
             var plug = ghoma.get(accessory.context.plugID);
-            if (plug.state === 'on')
-                characteristic.updateValue(1);
+            if (plug)
+                callback(null, (plug.state === 'on'));
             else
-                characteristic.updateValue(0); 
-            callback();
+                callback(null, 1);
         }.bind(this));
 
-        srvc.getCharacteristic(this.Characteristic.OutletInUse).on('get', function(callback, context) {
+        srvc.getCharacteristic(this.Characteristic.OutletInUse).on('get', function (callback, context) {
             this.log.info(accessory.displayName, "OutletInUse - get");
             accessory.getService(this.Service.Outlet).getCharacteristic(this.Characteristic.OutletInUse).updateValue(true);
             callback();
         }.bind(this));
-        
+
     }
 };
 
