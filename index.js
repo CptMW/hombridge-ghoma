@@ -63,8 +63,7 @@ function GHomaPlatform(log, config, api) {
     ghoma.onNew = function (plug) {
         console.log('ghoma: Registered    ' + plug.remoteAddress + " " + plug.id);
 
-        if (this.HBtimers[plug.id])
-            this.HBtimers[plug.id].refresh();
+        this.heartbeatHandler(plug.id);
 
         // outlet was registered by ghoma server
         // run addNewDevices to assure the outlet is added
@@ -78,8 +77,7 @@ function GHomaPlatform(log, config, api) {
     ghoma.onStatusChange = function (plug) {
         this.log.info('New state of ' + plug.remoteAddress + ' is ' + plug.state + ' triggered ' + plug.triggered);
 
-        if (this.HBtimers[plug.id])
-            this.HBtimers[plug.id].refresh();
+        this.heartbeatHandler(plug.id);
 
         if (this.getFromAccessories(plug)) {
             var srvc = this.getFromAccessories(plug).getService(this.Service.Outlet);
@@ -100,19 +98,16 @@ function GHomaPlatform(log, config, api) {
 
 GHomaPlatform.prototype.heartbeatHandler = function (id) {
 
-    if (this.HBtimers[id]) {
-        this.HBtimers[id].refresh();
+    if (this.HBtimers[id])
+        clearTimeout(this.HBtimers[id]);
 
-    } else {
-        this.log.info('setting heartbeat timer for', id);
-        this.HBtimers[id] = setTimeout(function (id) {
+    this.HBtimers[id] = setTimeout(function (id) {
 
-            this.log.info('missing heartbeat of ', id);
-            delete this.HBtimers[id];
+        this.log.info('missing heartbeat of ', id);
+        delete this.HBtimers[id];
 
-            this.removeAccessory(id);
-        }.bind(this), heartbeattimeout * 1000, id);
-    }
+        this.removeAccessory(id);
+    }.bind(this), heartbeattimeout * 1000, id);
 };
 
 /****
@@ -206,6 +201,7 @@ GHomaPlatform.prototype.registerCallbacks = function (accessory) {
             } else {
                 callback('no_response');
             }
+            this.heartbeatHandler(plug.id);
         }.bind(this));
 
         srvc.getCharacteristic(this.Characteristic.On).on('get', function (callback, context) {
@@ -214,11 +210,13 @@ GHomaPlatform.prototype.registerCallbacks = function (accessory) {
                 callback(null, (plug.state === 'on'));
             else
                 callback('no_response');
+            this.heartbeatHandler(plug.id);
         }.bind(this));
 
         srvc.getCharacteristic(this.Characteristic.OutletInUse).on('get', function (callback, context) {
             this.log.info(accessory.displayName, "OutletInUse - get");
             callback(null, true);
+            this.heartbeatHandler(plug.id);
         }.bind(this));
     }
 };
