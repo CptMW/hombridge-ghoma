@@ -7,10 +7,12 @@
  *
  ******************************************************************/
 
-ghoma = require('ghoma');
-http = require('http');
-path = require('path');
-fs = require('fs');
+const ghoma = require('ghoma');
+const http = require('http');
+const path = require('path');
+const fs = require('fs');
+
+const heartbeattimeout = 30 * 60; // heartbeat timeout in seconds after which the outlet will be removed from homekit
 
 var host = undefined;
 
@@ -37,6 +39,7 @@ function GHomaPlatform(log, config, api) {
     this.api = api;
 
     this.accessories = [];
+    this.HBtimers = [];
 
     var home = process.env.HOME || process.env.HOMEPATH || process.env.USERPROFILE;
     this.configPath = path.join(home, '.homebridge/ghoma_conf.json');
@@ -51,28 +54,32 @@ function GHomaPlatform(log, config, api) {
     // starting server that keeps connection to physical G-Homa outlets
     ghoma.startServer(4196);
 
-    api.on('didFinishLaunching', function () {
-        this.webInterface = require('./lib/WebInterface.js')(this);
-    }.bind(this));
+    /*
+        api.on('didFinishLaunching', function () {
+            this.webInterface = require('./lib/WebInterface.js')(this);
+        }.bind(this));
+    */
 
     ghoma.onNew = function (plug) {
         console.log('ghoma: Registered    ' + plug.remoteAddress + " " + plug.id);
 
-        // and if not in the ignoreDevices-Array of ghoma_config.json
-        if (this.config['ignoreDevices'].indexOf(plug.id) < 0) {
+        if (this.HBtimers[plug.id])
+            this.HBtimers[plug.id].refresh();
 
-            // outlet was registered by ghoma server
-            // run addNewDevices to assure the outlet is added 
-            // to homebridge in case it is not in the cache yet
-            this.addNewOutlet(plug);
+        // outlet was registered by ghoma server
+        // run addNewDevices to assure the outlet is added
+        // to homebridge in case it is not in the cache yet
+        this.addNewOutlet(plug);
 
-            // set 'OutletInUse' to true
-            this.getFromAccessories(plug).getService(this.Service.Outlet).getCharacteristic(this.Characteristic.OutletInUse).updateValue(true);
-        }
+        // set 'OutletInUse' to true
+        this.getFromAccessories(plug).getService(this.Service.Outlet).getCharacteristic(this.Characteristic.OutletInUse).updateValue(true);
     }.bind(this);
 
     ghoma.onStatusChange = function (plug) {
         this.log.info('New state of ' + plug.remoteAddress + ' is ' + plug.state + ' triggered ' + plug.triggered);
+
+        if (this.HBtimers[plug.id])
+            this.HBtimers[plug.id].refresh();
 
         if (this.getFromAccessories(plug)) {
             var srvc = this.getFromAccessories(plug).getService(this.Service.Outlet);
@@ -85,6 +92,27 @@ function GHomaPlatform(log, config, api) {
 
     }.bind(this);
 
+    ghoma.onHeartbeat = function (plug) {
+        this.heartbeatHandler(plug.id);
+    }.bind(this);
+}
+
+
+GHomaPlatform.prototype.heartbeatHandler = function (id) {
+
+    if (this.HBtimers[id]) {
+        this.HBtimers[id].refresh();
+
+    } else {
+        this.log.info('setting heartbeat timer for', id);
+        this.HBtimers[id] = setTimeout(function (id) {
+
+            this.log.info('missing heartbeat of ', id);
+            delete this.HBtimers[id];
+
+            this.removeAccessory(id);
+        }.bind(this), heartbeattimeout * 1000, id);
+    }
 };
 
 /****
@@ -99,6 +127,8 @@ GHomaPlatform.prototype.configureAccessory = function (accessory) {
     this.registerCallbacks(accessory);
 
     this.accessories.push(accessory);
+
+    this.heartbeatHandler(accessory.context.plugID);
 };
 
 
@@ -122,23 +152,25 @@ GHomaPlatform.prototype.addNewOutlet = function (plug, name) {
         else
             accessoryName = uuidString;
 
+        var uuid = this.UUIDgen.generate(uuidString);
+
         this.log.info('===================================');
         this.log.info('add outlet with id: ' + plug.id);
         this.log.info('          named it: ' + accessoryName);
 
-        var uuid = this.UUIDgen.generate(uuidString);
+        var newAccessory;
 
-        var newAccessory = new this.Accessory(accessoryName, uuid);
-        newAccessory.addService(this.Service.Outlet, accessoryName)
-
-        this.registerCallbacks(newAccessory);
+        newAccessory = new this.Accessory(accessoryName, uuid);
+        newAccessory.addService(this.Service.Outlet, accessoryName);
 
         // save Outlet ID from ghoma server to homebridge accessory to allow for persistent
         // mapping between plug object of ghora lib and accessory in homebridge
         newAccessory.context.plugID = plug.id;
 
+        this.registerCallbacks(newAccessory);
         this.accessories.push(newAccessory);
         this.api.registerPlatformAccessories("homebridge-ghoma", "GHoma", [newAccessory]);
+        this.heartbeatHandler(plug.id);
     }
 };
 
@@ -149,12 +181,10 @@ GHomaPlatform.prototype.addNewOutlet = function (plug, name) {
  ******/
 GHomaPlatform.prototype.registerCallbacks = function (accessory) {
 
-    accessory.reachable = true;
     accessory.on('identify', function (paired, callback) {
         this.log.info(accessory.displayName, "Identify!!!");
         callback();
     });
-
 
     var informationService = accessory.getService(this.Service.AccessoryInformation);
     informationService.setCharacteristic(this.Characteristic.Manufacturer, "Hardware by GOA, Software by OpenSource Community")
@@ -174,7 +204,7 @@ GHomaPlatform.prototype.registerCallbacks = function (accessory) {
                     plug.off();
                 callback();
             } else {
-                callback(null, 1);
+                callback('no_response');
             }
         }.bind(this));
 
@@ -183,14 +213,13 @@ GHomaPlatform.prototype.registerCallbacks = function (accessory) {
             if (plug)
                 callback(null, (plug.state === 'on'));
             else
-                callback(null, 1);
+                callback('no_response');
         }.bind(this));
 
         srvc.getCharacteristic(this.Characteristic.OutletInUse).on('get', function (callback, context) {
             this.log.info(accessory.displayName, "OutletInUse - get");
             callback(null, true);
         }.bind(this));
-
     }
 };
 
@@ -219,7 +248,6 @@ GHomaPlatform.prototype.removeAccessory = function (id) {
         var removeIndex = this.accessories.indexOf(accessory[0]);
         if (removeIndex > -1)
             this.accessories.splice(removeIndex, 1);
-        this.log.info('remove index ', removeIndex);
     }
 
 };
@@ -230,14 +258,3 @@ GHomaPlatform.prototype.removeAccessory = function (id) {
 GHomaPlatform.prototype.storeConfig = function () {
     fs.writeFileSync(this.configPath, JSON.stringify(this.config, null, '    '));
 };
-
-/*
-GHomaPlatform.prototype.renameAccessory = function(id, newName) {
-
-    this.log.info('renaming accessory id: ', id, ' new name: ', newName);
-    
-    this.removeAccessory(id);
-    this.addNewOutlet(ghoma.get(id), newName);
-    
-};
-*/
