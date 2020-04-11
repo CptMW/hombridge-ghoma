@@ -216,7 +216,6 @@ GHomaPlatform.prototype.registerCallbacks = function (accessory) {
         srvc.getCharacteristic(this.Characteristic.OutletInUse).on('get', function (callback, context) {
             this.log.info(accessory.displayName, "OutletInUse - get");
             callback(null, true);
-            this.heartbeatHandler(plug.id);
         }.bind(this));
     }
 };
