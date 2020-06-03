@@ -197,11 +197,11 @@ GHomaPlatform.prototype.registerCallbacks = function (accessory) {
                     plug.on();
                 else
                     plug.off();
+                this.heartbeatHandler(plug.id);
                 callback();
             } else {
                 callback('no_response');
             }
-            this.heartbeatHandler(plug.id);
         }.bind(this));
 
         srvc.getCharacteristic(this.Characteristic.On).on('get', function (callback, context) {
