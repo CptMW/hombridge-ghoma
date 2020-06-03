@@ -206,11 +206,12 @@ GHomaPlatform.prototype.registerCallbacks = function (accessory) {
 
         srvc.getCharacteristic(this.Characteristic.On).on('get', function (callback, context) {
             var plug = ghoma.get(accessory.context.plugID);
-            if (plug)
+            if (plug) {
                 callback(null, (plug.state === 'on'));
+                this.heartbeatHandler(plug.id);
+            }
             else
                 callback('no_response');
-            this.heartbeatHandler(plug.id);
         }.bind(this));
 
         srvc.getCharacteristic(this.Characteristic.OutletInUse).on('get', function (callback, context) {
